@@ -1,0 +1,1355 @@
+SIH 26124 – ROAD DAMAGE AI MODEL
+Technical Model, Environment, Tools, Process, Metrics, Advantages and Limitations
+Prepared for: SIH 26124 – AI-Powered Mobile Urban Intelligence Platform Using Public Transport Fleet
+
+======================================================================
+1. EXECUTIVE SUMMARY
+======================================================================
+
+This project uses a custom-trained YOLO26n object-detection model to detect
+road-surface damage from images captured or supplied by a public-transport
+fleet. The model is intended to become the computer-vision component of the
+SIH 26124 urban-intelligence platform.
+
+The final frozen deployment model is:
+
+C:\Users\Kunal Shinde\Desktop\26124-Urban-Intelligence\models\road_damage\v1\best.pt
+
+Model file size:
+5,388,229 bytes (approximately 5.14 MiB)
+
+The model was trained for 30 epochs on the RDD2022 road-damage dataset and
+validated on 5,757 images containing 8,327 annotated damage instances.
+
+Final validation results:
+
+Overall Precision       = 0.609  (60.9%)
+Overall Recall          = 0.521  (52.1%)
+mAP@0.50                = 0.559  (55.9%)
+mAP@0.50:0.95           = 0.281  (28.1%)
+
+Per-class mAP@0.50:
+Longitudinal crack      = 54.7%
+Transverse crack        = 57.6%
+Alligator crack         = 67.4%
+Pothole                 = 44.1%
+
+Per-class mAP@0.50:0.95:
+Longitudinal crack      = 29.5%
+Transverse crack        = 27.8%
+Alligator crack         = 35.8%
+Pothole                 = 19.1%
+
+Validation inference time:
+4.6 ms/image on the NVIDIA GeForce RTX 3050 A Laptop GPU
+(approximately 217 image inferences/second for the inference component alone,
+calculated as 1000 / 4.6; real application throughput will be lower because
+preprocessing, image transfer, postprocessing, I/O and API overhead also
+contribute).
+
+The model is suitable for a hackathon prototype and proof-of-concept. It
+should NOT be presented as a certified road-safety or infrastructure-
+inspection system. Its main weakness is pothole detection, where recall is
+38.6% and mAP@0.50 is 44.1%.
+
+======================================================================
+2. PROJECT PURPOSE
+======================================================================
+
+SIH Problem Statement:
+26124 – AI-Powered Mobile Urban Intelligence Platform Using Public Transport
+Fleet
+
+The intended system uses public-transport vehicles as mobile sensing agents.
+Instead of depending only on fixed roadside inspection, cameras/images from
+the fleet can be processed by AI to identify road damage.
+
+The computer-vision pipeline is:
+
+Public Transport Camera/Image
+        |
+        v
+Road Image
+        |
+        v
+YOLO26n Road-Damage Detector
+        |
+        v
+Damage Class + Confidence + Bounding Box
+        |
+        v
+GPS / Bus Location Correlation
+        |
+        v
+Road-Damage Event
+        |
+        v
+Backend / Database / API
+        |
+        v
+Map + Dashboard + Alerts
+
+For the current prototype, NMMT-related fleet and GPS data are synthetic
+prototype data. They are used to demonstrate the architecture and integration
+logic. They must not be represented as live NMMT telemetry.
+
+======================================================================
+3. MODEL IDENTIFICATION
+======================================================================
+
+Model family:
+YOLO26
+
+Model variant:
+YOLO26n (nano)
+
+Task:
+Object Detection
+
+Training objective:
+Detect and localize road-damage instances using bounding boxes.
+
+Input image size used for training/validation:
+640 x 640 pixels
+
+Number of classes:
+4
+
+Class mapping:
+
+Class 0 = Longitudinal crack
+Class 1 = Transverse crack
+Class 2 = Alligator crack
+Class 3 = Pothole
+
+Final trained checkpoint:
+best.pt
+
+Deployment version:
+road_damage_v1
+
+Deployment location:
+models\road_damage\v1\best.pt
+
+The v1 model should be treated as a frozen deployment artifact. Future
+experiments should use v2, v3, etc., rather than overwriting v1.
+
+======================================================================
+4. DATASET – RDD2022
+======================================================================
+
+Training dataset:
+RDD2022 – Road Damage Dataset 2022
+
+RDD2022 is a multinational road-damage image dataset containing:
+
+47,420 images
+55,007 released training annotations/instances
+4 road-damage categories
+6 countries:
+Japan, India, Czech Republic, Norway, United States, China
+
+The dataset contains road imagery from different acquisition conditions,
+including smartphones, cameras, Google Street View imagery and aerial/drone
+views.
+
+The four categories used in this project are:
+
+1. Longitudinal crack
+2. Transverse crack
+3. Alligator crack
+4. Pothole
+
+Annotations are bounding boxes.
+
+Why RDD2022 was selected:
+- Large dataset
+- Multiple countries
+- Multiple road environments
+- Includes India
+- Contains the exact road-damage categories required for this prototype
+- Appropriate for object-detection training
+- More diverse than a small manually collected dataset
+
+Important limitation:
+RDD2022 is not the same as a Navi Mumbai-specific dataset. Therefore,
+performance on real Navi Mumbai roads can differ from validation performance.
+Local calibration/validation with representative Navi Mumbai images would be
+required for a production deployment.
+
+======================================================================
+5. TRAINING ENVIRONMENT
+======================================================================
+
+Operating environment:
+Windows / PowerShell
+
+Project directory:
+C:\Users\Kunal Shinde\Desktop\26124-Urban-Intelligence
+
+Python virtual environment:
+.venv
+
+Python:
+3.12.10
+
+PyTorch:
+2.11.0+cu128
+
+CUDA:
+Available = True
+
+GPU:
+NVIDIA GeForce RTX 3050 A Laptop GPU
+
+GPU memory reported:
+4094 MiB
+
+Ultralytics:
+8.4.142
+
+OpenCV:
+4.13.0
+
+NumPy:
+2.2.6
+
+Streamlit:
+1.63.0
+
+The virtual environment is used to isolate the project's Python dependencies
+from the system Python installation.
+
+======================================================================
+6. HARDWARE AND SOFTWARE STACK
+======================================================================
+
+Hardware:
+- ASUS TUF F16 laptop
+- NVIDIA GeForce RTX 3050 A Laptop GPU
+- Approximately 4 GB reported GPU memory
+
+Software stack:
+
+Operating System
+    |
+    +-- PowerShell
+    |
+Python 3.12.10
+    |
+    +-- PyTorch 2.11.0+cu128
+    |
+    +-- Ultralytics 8.4.142
+    |
+    +-- OpenCV 4.13.0
+    |
+    +-- NumPy 2.2.6
+    |
+    +-- Streamlit 1.63.0
+    |
+    +-- CUDA GPU acceleration
+
+The trained YOLO model is therefore not dependent on the Streamlit dashboard.
+Streamlit is only a prototype visualization layer.
+
+======================================================================
+7. TRAINING PROCESS
+======================================================================
+
+Step 1 – Project setup
+
+A dedicated project directory was created:
+
+26124-Urban-Intelligence
+
+A Python virtual environment was used:
+
+.venv
+
+Python 3.12.10 was selected for compatibility and package stability.
+
+Step 2 – GPU verification
+
+PyTorch was installed with CUDA support.
+
+The system verified:
+
+CUDA available = True
+GPU = NVIDIA GeForce RTX 3050 A Laptop GPU
+
+This allowed model training and inference to use the NVIDIA GPU rather than
+CPU-only execution.
+
+Step 3 – Install ML libraries
+
+The main libraries/tools were:
+
+PyTorch
+Ultralytics
+OpenCV
+NumPy
+
+Ultralytics provides the YOLO training, validation and inference interface.
+
+Step 4 – Prepare RDD2022
+
+RDD2022 was placed under:
+
+datasets\RDD2022
+
+The dataset configuration was:
+
+datasets\RDD2022\data.yaml
+
+This YAML file defines the dataset paths and four class names.
+
+Step 5 – Start from a pretrained YOLO26n checkpoint
+
+The pretrained YOLO26n checkpoint was used as the starting model.
+
+This is transfer learning/fine-tuning rather than training the neural network
+from completely random weights.
+
+Step 6 – Train on road-damage data
+
+The model was trained using the RDD2022 data.
+
+Important training configuration used during the final run:
+
+Model:
+YOLO26n
+
+Epochs:
+30
+
+Image size:
+640
+
+Batch size:
+4
+
+Device:
+GPU 0
+
+Workers:
+2
+
+The final training run was:
+
+runs\detect\train-7
+
+Step 7 – Save checkpoints
+
+The training process generated:
+
+runs\detect\train-7\weights\best.pt
+runs\detect\train-7\weights\last.pt
+
+best.pt is the preferred deployment checkpoint.
+
+last.pt is a backup of the final training state.
+
+Ultralytics detection training normally selects best.pt using its fitness
+metric, which defaults to mAP@0.50:0.95.
+
+Step 8 – Validation
+
+The best checkpoint was validated against the validation split.
+
+Validation result:
+
+5,757 images
+8,327 instances
+
+This produced precision, recall, mAP50 and mAP50-95 values.
+
+Step 9 – Freeze deployment model
+
+The best checkpoint was copied from:
+
+runs\detect\train-7\weights\best.pt
+
+to:
+
+models\road_damage\v1\best.pt
+
+This separates the deployment artifact from experimental training runs.
+
+======================================================================
+8. FINAL MODEL METRICS
+======================================================================
+
+Overall:
+
+Metric                         Value
+------------------------------------------------
+Precision                     60.9%
+Recall                        52.1%
+mAP@0.50                      55.9%
+mAP@0.50:0.95                 28.1%
+
+Interpretation:
+
+Precision of 60.9% means that, under the validation/evaluation conditions,
+the model's detected objects were correct at approximately that rate.
+
+Recall of 52.1% means the model detected approximately half of the annotated
+damage instances under the evaluation conditions.
+
+mAP@0.50 of 55.9% evaluates average precision using an IoU threshold of 0.50.
+
+mAP@0.50:0.95 of 28.1% is stricter. It averages AP across IoU thresholds
+from 0.50 through 0.95 in increments of 0.05.
+
+Do NOT call mAP "accuracy". Object detection is better described using
+precision, recall, IoU, AP and mAP.
+
+======================================================================
+9. PER-CLASS METRICS
+======================================================================
+
+Class                  Precision   Recall   mAP50   mAP50-95
+-------------------------------------------------------------
+Longitudinal            60.0%       51.9%    54.7%     29.5%
+Transverse              59.1%       56.0%    57.6%     27.8%
+Alligator               66.3%       61.8%    67.4%     35.8%
+Pothole                 58.0%       38.6%    44.1%     19.1%
+
+Technical interpretation:
+
+Alligator crack is currently the strongest class by mAP50.
+
+Pothole is the weakest class.
+
+Pothole recall = 38.6%.
+This means a significant number of annotated potholes are missed by the
+current model under validation conditions.
+
+Pothole mAP50-95 = 19.1%.
+This also indicates that localization/classification quality becomes much
+weaker when stricter bounding-box overlap requirements are applied.
+
+This is the most important limitation to disclose during a technical
+presentation.
+
+======================================================================
+10. SPEED AND MODEL SIZE
+======================================================================
+
+Final validation output reported:
+
+Preprocessing = 0.3 ms/image
+Inference     = 4.6 ms/image
+Loss          = 0.0 ms/image
+Postprocess   = 1.4 ms/image
+
+Inference time is therefore very small on the RTX 3050 GPU.
+
+Approximate raw inference-only throughput:
+
+1000 / 4.6 = approximately 217 images/second
+
+This is NOT the complete application throughput.
+
+A real application also has:
+- Camera capture
+- Image decoding
+- Resize/normalization
+- GPU transfer
+- YOLO inference
+- Postprocessing
+- GPS correlation
+- API communication
+- Database storage
+- Network latency
+- Dashboard rendering
+
+Therefore, approximately 217 FPS must not be claimed as the end-to-end system
+FPS.
+
+Model summary from the final validation:
+
+120 layers
+2,375,616 parameters
+5.3 GFLOPs
+0 gradients during validation
+
+The public YOLO26n reference reports approximately 2.4M parameters and
+5.5 GFLOPs for the fused reference model; the exact displayed count can vary
+slightly between fused/unfused/checkpoint representations.
+
+======================================================================
+11. WHAT THE MODEL ACTUALLY OUTPUTS
+======================================================================
+
+For each detected road-damage object, the model can produce:
+
+1. Damage class
+2. Confidence score
+3. Bounding box
+
+Example:
+
+Damage type:
+Transverse
+
+Confidence:
+0.386
+
+Bounding box:
+x1 = 0.0
+y1 = 68.69
+x2 = 213.37
+y2 = 102.42
+
+The application layer can then associate this detection with:
+
+Bus ID
+Route ID
+Latitude
+Longitude
+Timestamp
+Nearest bus stop
+Distance to nearest stop
+Severity label
+Image path
+
+This converts a computer-vision detection into an urban-intelligence event.
+
+======================================================================
+12. INTEGRATION WITH THE NMMT PROTOTYPE
+======================================================================
+
+The project contains a prototype NMMT dataset:
+
+datasets\NMMT_Prototype
+
+Important files include:
+
+stops.csv
+route_stops.csv
+buses.csv
+bus_locations.csv
+routes.csv
+traffic_events.csv
+road_damage_events.csv
+
+The current NMMT fleet/location information is synthetic prototype data.
+
+Example prototype bus:
+NMMT-P001
+
+The system can:
+
+1. Read the latest bus GPS record.
+2. Determine the bus's approximate location.
+3. Find the nearest bus stop using geographic distance.
+4. Determine routes serving that stop.
+5. Run YOLO road-damage detection.
+6. Create a road-damage event.
+7. Attach the bus/route/location information to that event.
+8. Store the result in road_damage_events.csv.
+9. Display the result in the dashboard.
+
+Example event structure:
+
+Event ID
+Timestamp
+Bus ID
+Route ID
+Latitude
+Longitude
+Damage type
+Confidence
+Severity
+Image path
+Data status
+Nearest stop ID
+Nearest stop name
+Distance to stop
+Bounding-box coordinates
+
+======================================================================
+13. SEVERITY LOGIC
+======================================================================
+
+The current prototype converts model confidence into an application-level
+severity label:
+
+Confidence >= 0.70
+    HIGH
+
+Confidence >= 0.45 and < 0.70
+    MEDIUM
+
+Confidence < 0.45
+    LOW
+
+IMPORTANT:
+
+This is NOT a clinically, scientifically, or civil-engineering calibrated
+damage-severity model.
+
+It is a prototype rule for demonstrating how an AI detection can be converted
+into a prioritized alert.
+
+A production system should determine severity using additional evidence such
+as:
+- Damage type
+- Physical dimensions
+- Area/extent
+- Depth estimate where available
+- Repeated detections
+- Vehicle vibration/IMU
+- Traffic volume
+- Road importance
+- Historical observations
+- Expert/civil-engineering rules
+
+======================================================================
+14. EXAMPLE END-TO-END DETECTION
+======================================================================
+
+Prototype test:
+
+Bus ID:
+NMMT-P001
+
+Route:
+R022
+
+Latitude:
+19.026936545290653
+
+Longitude:
+73.02184900534817
+
+Nearest stop:
+Nerul Railway Station
+
+Distance:
+786.3 metres
+
+Image:
+China_Drone_000001.jpg
+
+Detection:
+1 Transverse crack
+
+Confidence:
+0.386
+
+Severity:
+LOW under the prototype confidence rule
+
+Inference:
+148.8 ms in that particular single-image integration run
+
+Important distinction:
+
+The 4.6 ms value is the model's validation inference timing on the RTX 3050
+under the validation pipeline.
+
+The 148.8 ms value came from the particular integration execution and includes
+runtime conditions such as model invocation and associated processing. These
+numbers should not be treated as contradictory; they measure different
+execution contexts.
+
+======================================================================
+15. ADVANTAGES
+======================================================================
+
+1. Lightweight model
+
+YOLO26n is the nano variant, making it substantially smaller than larger YOLO
+variants.
+
+This is useful for:
+- Edge devices
+- Laptop inference
+- Mobile/embedded deployment research
+- Fleet-camera applications
+- Faster experimentation
+
+2. Fast inference
+
+The project achieved 4.6 ms/image model inference timing on an RTX 3050 during
+validation.
+
+This makes near-real-time processing technically plausible on capable GPU
+hardware, although complete system latency will be higher.
+
+3. Four directly relevant damage classes
+
+The model directly detects:
+- Longitudinal cracks
+- Transverse cracks
+- Alligator cracks
+- Potholes
+
+These are highly relevant to road-condition monitoring.
+
+4. Bounding-box localization
+
+The system does not only say "damage exists."
+
+It identifies approximately where the damage is in the image.
+
+5. Transfer learning
+
+Starting from pretrained YOLO26n weights reduces the need to train a deep
+network from random initialization.
+
+6. Multinational dataset exposure
+
+RDD2022 covers six countries and multiple road environments, which provides
+more diversity than a small single-city dataset.
+
+7. India is represented
+
+RDD2022 includes Indian road imagery, giving the project some regional
+relevance.
+
+8. Integration-friendly
+
+The model is a normal Ultralytics .pt checkpoint and can be called from Python.
+
+It can therefore be wrapped in FastAPI and exposed to a full-stack application.
+
+9. Low model storage requirement
+
+The deployment checkpoint is approximately 5.14 MiB.
+
+10. Scalable architecture
+
+The model can later be moved from laptop GPU inference to:
+- Cloud GPU
+- Edge GPU
+- NVIDIA Jetson-class hardware
+- ONNX
+- TensorRT
+- Other supported deployment formats
+
+======================================================================
+16. DISADVANTAGES AND LIMITATIONS
+======================================================================
+
+1. Pothole performance is weak
+
+Pothole recall:
+38.6%
+
+Pothole mAP50:
+44.1%
+
+This means potholes can be missed.
+
+2. Moderate overall recall
+
+Overall recall:
+52.1%
+
+A road-monitoring system must consider false negatives carefully because a
+missed defect can be operationally important.
+
+3. mAP50-95 is considerably lower
+
+Overall:
+mAP50 = 55.9%
+mAP50-95 = 28.1%
+
+This indicates that bounding-box localization becomes less reliable under
+stricter overlap criteria.
+
+4. Domain shift
+
+RDD2022 is multinational.
+
+The final system targets Navi Mumbai/public-transport conditions.
+
+Differences may include:
+- Road construction
+- Asphalt type
+- Lighting
+- Monsoon conditions
+- Camera position
+- Camera quality
+- Vehicle vibration
+- Traffic density
+- Road markings
+- Local repair patterns
+
+Therefore validation performance is not automatically equivalent to Navi
+Mumbai field performance.
+
+5. Dataset mismatch
+
+RDD2022 was not specifically collected for the exact camera setup that will
+be used by the SIH fleet prototype.
+
+A production deployment should collect and label representative local images.
+
+6. Confidence is not damage severity
+
+A high confidence score means the detector is more confident about its
+prediction under the learned distribution. It does not directly mean the
+physical road damage is more severe.
+
+7. False positives
+
+The model may sometimes identify non-damage visual patterns as damage.
+
+This can happen due to:
+- Shadows
+- Road markings
+- Repairs
+- Image artifacts
+- Surface texture
+- Unusual lighting
+
+8. False negatives
+
+The model may miss:
+- Very small potholes
+- Low-contrast cracks
+- Occluded damage
+- Damage under poor lighting
+- Damage blurred by vehicle motion
+
+9. Camera dependency
+
+Performance can change significantly with camera:
+- Height
+- Angle
+- Field of view
+- Resolution
+- Motion blur
+- Exposure
+
+10. No physical depth measurement
+
+The current model detects image appearance. It does not directly measure
+physical pothole depth in centimetres.
+
+11. Prototype severity logic
+
+The current HIGH/MEDIUM/LOW system is confidence-based and should not be
+represented as an engineering-grade severity assessment.
+
+12. Training cost
+
+The final 30-epoch training run took approximately:
+
+31.154 hours
+
+Therefore frequent retraining is impractical under a tight hackathon deadline.
+
+======================================================================
+17. REAL-WORLD METRIC INTERPRETATION
+======================================================================
+
+A useful way to understand the current model is:
+
+For every 100 annotated damage objects, the model detects roughly 52 on average
+under the validation conditions, based on overall recall.
+
+For the detected objects, approximately 61% are correct according to the
+overall precision metric.
+
+However, these are aggregate statistical metrics. They do NOT mean that every
+100 real-world road defects will produce exactly 52 detections or that exactly
+61 of 100 alerts will be correct.
+
+Real-world performance depends on the deployment domain.
+
+Pothole-specific recall is approximately 39%, which is the main operational
+risk for the current model.
+
+Therefore the prototype should use:
+AI detection
++
+GPS/location correlation
++
+human review/verification
++
+repeated observations
+
+rather than automatically treating every detection as a confirmed road repair
+requirement.
+
+======================================================================
+18. MODEL VALIDATION VS REAL-WORLD TESTING
+======================================================================
+
+Validation asks:
+
+"How well does the trained model perform on labeled data?"
+
+Real-world testing asks:
+
+"How well does it work on images from the actual intended deployment
+environment?"
+
+The current project has strong quantitative validation for the trained
+RDD2022 model, but it is still a prototype for Navi Mumbai.
+
+A future field-validation process should be:
+
+1. Collect representative Navi Mumbai road images.
+2. Include different times of day.
+3. Include dry and wet/monsoon conditions.
+4. Include different camera angles.
+5. Include different road types.
+6. Manually annotate road damage.
+7. Split data into train/validation/test sets.
+8. Evaluate precision, recall, mAP50 and mAP50-95.
+9. Analyze false positives and false negatives.
+10. Recalibrate/retrain only if justified by the evaluation.
+
+======================================================================
+19. CURRENT APPLICATION ARCHITECTURE
+======================================================================
+
+Recommended architecture:
+
+Camera / Image
+      |
+      v
+ML Inference Module
+      |
+      v
+YOLO26n best.pt
+      |
+      v
+Detection JSON
+      |
+      +---- damage_type
+      +---- confidence
+      +---- bounding_box
+      |
+      v
+FastAPI /api/detect
+      |
+      v
+Backend
+      |
+      +---- GPS / Bus data
+      +---- Route data
+      +---- Traffic data
+      +---- Database
+      |
+      v
+Map / Dashboard
+      |
+      +---- Bus markers
+      +---- Route lines
+      +---- Stops
+      +---- Damage alerts
+      +---- Traffic events
+
+This separates machine learning from the rest of the software system.
+
+======================================================================
+20. RECOMMENDED API OUTPUT
+======================================================================
+
+A clean API response can look like:
+
+{
+  "success": true,
+  "model_version": "road_damage_v1",
+  "detections": [
+    {
+      "damage_type": "Pothole",
+      "confidence": 0.82,
+      "severity": "HIGH",
+      "bbox": {
+        "x1": 120,
+        "y1": 80,
+        "x2": 340,
+        "y2": 240
+      }
+    }
+  ]
+}
+
+The frontend/backend developer does not need to know the training process.
+They only need the API contract.
+
+======================================================================
+21. CURRENT PROJECT FILE STRUCTURE
+======================================================================
+
+26124-Urban-Intelligence/
+|
++-- .venv/
+|
++-- datasets/
+|   +-- RDD2022/
+|   +-- NMMT_Prototype/
+|
++-- models/
+|   +-- road_damage/
+|       +-- v1/
+|           +-- best.pt
+|
++-- runs/
+|   +-- detect/
+|       +-- train-7/
+|           +-- weights/
+|               +-- best.pt
+|               +-- last.pt
+|
++-- src/
+|   +-- detect_and_log.py
+|
++-- dashboard/
+|   +-- app.py
+|
++-- other project files...
+
+Deployment model:
+models\road_damage\v1\best.pt
+
+Training source model:
+runs\detect\train-7\weights\best.pt
+
+======================================================================
+22. TOOLS USED
+======================================================================
+
+Python
+Purpose:
+Main programming language for ML and integration.
+
+PyTorch
+Purpose:
+Deep-learning framework and GPU computation.
+
+Ultralytics
+Purpose:
+YOLO training, validation and inference.
+
+YOLO26n
+Purpose:
+Road-damage object detection.
+
+CUDA
+Purpose:
+GPU acceleration.
+
+OpenCV
+Purpose:
+Image loading and computer-vision processing.
+
+NumPy
+Purpose:
+Numerical/image array operations.
+
+PowerShell
+Purpose:
+Environment management, file operations and command-line execution.
+
+Streamlit
+Purpose:
+Rapid prototype dashboard.
+
+CSV
+Purpose:
+Prototype data storage for bus, route, stop, traffic and damage-event data.
+
+FastAPI
+Recommended next step:
+Expose the trained model as a backend inference API.
+
+Leaflet / React-Leaflet
+Recommended map technology:
+Interactive map visualization for buses, routes, stops and AI damage events.
+
+======================================================================
+23. WHY YOLO26n WAS A PRACTICAL CHOICE
+======================================================================
+
+The SIH project requires more than a high-accuracy standalone model. It also
+requires integration with fleet data, GPS, maps, backend services and a
+frontend.
+
+Therefore a compact detector is useful because it reduces computational and
+deployment requirements.
+
+YOLO26n provides a useful balance for a prototype:
+
+Small model
++
+Fast inference
++
+Object localization
++
+Transfer learning
++
+Easy Python integration
++
+Ultralytics tooling
+
+The project therefore prioritizes a complete working system rather than
+spending the entire hackathon period attempting to maximize a single
+benchmark metric.
+
+======================================================================
+24. COMPARISON WITH THE TRAINING EXPERIMENT
+======================================================================
+
+A YOLOv8n experiment was also started on RDD2022.
+
+That experiment was not completed to the planned 10 epochs. It became too slow
+for the hackathon schedule and was stopped.
+
+The YOLOv8n run should therefore NOT be used as a fair benchmark proving that
+YOLO26n is universally better.
+
+The final YOLO26n model is the official SIH deployment model for this project.
+
+======================================================================
+25. MODEL VERSION CONTROL
+======================================================================
+
+Current:
+
+road_damage_v1
+    |
+    +-- best.pt
+
+If a future model is trained:
+
+road_damage_v2
+    |
+    +-- best.pt
+
+Do not overwrite v1.
+
+Record for every future version:
+
+Model version
+Dataset version
+Dataset source
+Classes
+Training epochs
+Image size
+Batch size
+Python version
+PyTorch version
+Ultralytics version
+GPU
+Precision
+Recall
+mAP50
+mAP50-95
+Inference time
+Known limitations
+
+This makes the model reproducible and defensible during the SIH presentation.
+
+======================================================================
+26. WHAT SHOULD BE SAID DURING THE SIH PRESENTATION
+======================================================================
+
+Recommended technical statement:
+
+"We developed a lightweight YOLO26n-based road-damage detection model
+fine-tuned on the RDD2022 multinational road-damage dataset. The model
+detects longitudinal cracks, transverse cracks, alligator cracks and potholes.
+After 30 training epochs, our validation results achieved 60.9% precision,
+52.1% recall, 55.9% mAP@0.50 and 28.1% mAP@0.50:0.95. On our RTX 3050 GPU,
+the validation pipeline reported approximately 4.6 milliseconds of model
+inference time per image. The model is integrated with a prototype public-
+transport fleet pipeline so that detected road damage can be associated with
+bus GPS coordinates, routes and nearby stops and displayed as actionable
+events on the urban-intelligence dashboard."
+
+Important honesty statement:
+
+"The current fleet/GPS integration uses simulated prototype telemetry. The
+architecture is designed to consume authorized real-time fleet data when such
+a feed is available. The current road-damage model is a prototype and requires
+local Navi Mumbai field validation before production use."
+
+======================================================================
+27. TECHNICAL DEFINITIONS
+======================================================================
+
+Precision:
+Of the objects predicted by the model, how many are correct.
+
+Recall:
+Of the actual annotated objects, how many were detected.
+
+IoU – Intersection over Union:
+Measures overlap between a predicted bounding box and the ground-truth box.
+
+IoU =
+Area of intersection / Area of union
+
+AP – Average Precision:
+Summarizes the precision-recall relationship for a class.
+
+mAP:
+Mean Average Precision across classes.
+
+mAP@0.50:
+mAP using IoU = 0.50.
+
+mAP@0.50:0.95:
+Average mAP over IoU thresholds 0.50, 0.55, ..., 0.95.
+
+GFLOPs:
+Approximate billions of floating-point operations for a model pass at the
+specified input configuration. It is a computational-complexity indicator,
+not a direct measurement of real-world speed.
+
+Parameters:
+Learnable model weights. Fewer parameters generally help reduce model size,
+although parameter count alone does not determine accuracy.
+
+Epoch:
+One complete pass through the training dataset.
+
+Transfer learning:
+Starting with an already trained model and adapting it to a new task/domain.
+
+Inference:
+Running the trained model on new input data.
+
+False positive:
+The model predicts damage where the ground truth does not contain the
+corresponding damage.
+
+False negative:
+The model fails to detect damage that is actually present.
+
+======================================================================
+28. CURRENT STATUS
+======================================================================
+
+TRAINING:
+Completed
+
+FINAL MODEL:
+Frozen as road_damage_v1
+
+MODEL:
+YOLO26n
+
+EPOCHS:
+30
+
+DATASET:
+RDD2022
+
+CLASSES:
+4
+
+VALIDATION:
+Completed
+
+INTEGRATION:
+Prototype completed
+
+NMMT DATA:
+Synthetic prototype data
+
+DASHBOARD:
+Prototype available using Streamlit
+
+NEXT ENGINEERING STEP:
+Wrap best.pt in a FastAPI inference service and provide a stable API contract
+to the full-stack teammate.
+
+No additional training is currently required for the SIH prototype unless a
+specific integration test reveals a critical failure.
+
+======================================================================
+29. KEY TAKEAWAY
+======================================================================
+
+The project has progressed from a raw road-damage dataset to a trained,
+validated and deployable computer-vision component.
+
+The complete development chain is:
+
+RDD2022
+   |
+   v
+Dataset YAML / class definitions
+   |
+   v
+Pretrained YOLO26n
+   |
+   v
+GPU fine-tuning
+   |
+   v
+30 training epochs
+   |
+   v
+Validation
+   |
+   v
+Precision / Recall / mAP evaluation
+   |
+   v
+best.pt
+   |
+   v
+models\road_damage\v1\best.pt
+   |
+   v
+Inference
+   |
+   v
+Road-damage event
+   |
+   +-- Damage class
+   +-- Confidence
+   +-- Bounding box
+   +-- Bus ID
+   +-- Route
+   +-- GPS
+   +-- Timestamp
+   +-- Nearest stop
+   |
+   v
+FastAPI / Backend
+   |
+   v
+Database + Map + Dashboard
+   |
+   v
+Actionable urban road-condition intelligence
+
+The current model is a technically valid SIH prototype component with measured
+validation performance and a clear deployment path. Its main engineering
+limitation is generalization to the exact Navi Mumbai operating environment,
+especially pothole detection. That limitation should be addressed through
+local field-data collection and validation in a future version rather than
+being hidden in the presentation.
+
+======================================================================
+30. SOURCE / REFERENCE NOTES
+======================================================================
+
+RDD2022:
+"RDD2022: A multi-national image dataset for automatic road damage detection"
+Geoscience Data Journal, DOI: 10.1002/gdj3.260
+
+Ultralytics documentation:
+YOLO26 model documentation
+YOLO object-detection documentation
+YOLO performance-metrics documentation
+YOLO model-evaluation documentation
+
+The numerical model results in this document are from the project's actual
+final validation output. Published YOLO26 benchmark figures are separate from
+the project's RDD2022 fine-tuning results and should not be presented as the
+project's own accuracy.
+
+END OF DOCUMENT
